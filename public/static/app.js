@@ -137,13 +137,18 @@ function renderSidebar() {
       </div>
 
       <div class="sidebar-tables">
-        ${State.tables.map(t => `
-          <div class="sidebar-table-item ${State.currentView==='table'&&State.currentTable===t.id?'active':''}" onclick="navigateTable('${t.id}')">
-            <div class="table-dot" style="background:${t.color}"></div>
+        ${State.tables.map(t => {
+          const isLive = t.active;
+          const liveClass = isLive ? 'live' : 'dormant';
+          const onlineCount = isLive ? (t.activeMembers?.length || 0) : 0;
+          return `
+          <div class="sidebar-table-item ${liveClass} ${State.currentView==='table'&&State.currentTable===t.id?'active':''}" onclick="navigateTable('${t.id}')">
+            <div class="table-dot ${liveClass}" style="background:${isLive ? 'var(--mac-green)' : t.color}"></div>
             <span style="flex:1;font-size:13px">${t.name}</span>
+            ${isLive ? `<span style="font-size:9px;color:var(--mac-green);font-weight:600;margin-right:4px">${onlineCount} on</span>` : ''}
             <span class="member-count">${t.members.length}</span>
           </div>
-        `).join('')}
+        `}).join('')}
       </div>
 
       <div class="sidebar-profile" onclick="navigate('portal')">
@@ -170,9 +175,16 @@ function renderContentHeader() {
     notifications: 'Notifications',
   };
   const t = State.currentView === 'table' ? State.tables.find(t => t.id === State.currentTable) : null;
+  const tLive = t?.active;
   return `
     <div class="content-header">
       <h2>${titles[State.currentView] || 'Round Table'}</h2>
+      ${State.currentView === 'table' && t ? `
+        <span class="header-live-indicator ${tLive ? 'live' : 'dormant'}">
+          <span class="indicator-dot"></span>
+          ${tLive ? `Live · ${t.activeMembers?.length || 0} active` : 'Dormant'}
+        </span>
+      ` : ''}
       <div style="flex:1"></div>
       ${State.currentView === 'table' && t ? `
         <div style="display:flex;gap:4px;align-items:center;margin-right:12px;">
@@ -287,18 +299,38 @@ function renderPortal() {
           <h3>My Tables</h3>
         </div>
         <div class="widget-body">
-          ${State.tables.map(t => `
-            <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #F2F2F7;cursor:pointer" onclick="navigateTable('${t.id}')">
-              <div style="width:36px;height:36px;border-radius:10px;background:${t.color};display:flex;align-items:center;justify-content:center">
+          ${State.tables.map(t => {
+            const isLive = t.active;
+            const liveClass = isLive ? 'live' : 'dormant';
+            const activeMemberDetails = (t.activeMembers || []).map(mid => State.members.find(m => m.id === mid)).filter(Boolean);
+            return `
+            <div class="portal-table-row ${liveClass}" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #F2F2F7;cursor:pointer" onclick="navigateTable('${t.id}')">
+              <div class="portal-table-icon ${liveClass}" style="width:36px;height:36px;border-radius:10px;background:${t.color};display:flex;align-items:center;justify-content:center;flex-shrink:0">
                 <i class="fas fa-circle-nodes" style="color:white;font-size:14px"></i>
               </div>
-              <div style="flex:1">
-                <div style="font-size:12px;font-weight:500">${t.name}</div>
-                <div style="font-size:10px;color:var(--mac-text2)">${t.members.length} members · ${t.items.length} items</div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="font-size:12px;font-weight:500">${t.name}</span>
+                  <span class="live-badge ${liveClass}">
+                    <span class="badge-dot"></span>
+                    ${isLive ? 'Live' : 'Idle'}
+                  </span>
+                </div>
+                <div style="font-size:10px;color:var(--mac-text2)">
+                  ${t.members.length} members · ${t.items.length} items${isLive ? ` · <span style="color:var(--mac-green);font-weight:500">${activeMemberDetails.length} active now</span>` : ` · ${timeAgo(t.lastActivity || 0)}`}
+                </div>
+                ${isLive && activeMemberDetails.length > 0 ? `
+                  <div class="active-members-row">
+                    ${activeMemberDetails.slice(0,5).map(m => `
+                      <div class="active-member-pip" style="background:${m.color}" title="${m.name}">${m.initials}</div>
+                    `).join('')}
+                    ${activeMemberDetails.length > 5 ? `<span style="font-size:8px;color:var(--mac-text2);margin-left:4px">+${activeMemberDetails.length - 5}</span>` : ''}
+                  </div>
+                ` : ''}
               </div>
               <i class="fas fa-chevron-right" style="font-size:10px;color:var(--mac-text2)"></i>
             </div>
-          `).join('')}
+          `}).join('')}
         </div>
       </div>
 
@@ -363,17 +395,32 @@ function renderTable() {
   const memberCount = table.members.length;
   const tableSize = Math.max(180, 120 + memberCount * 40);
   const itemCount = table.items.length;
+  const isLive = table.active;
+  const liveClass = isLive ? 'live' : 'dormant';
+  const activeMemberDetails = (table.activeMembers || []).map(mid => State.members.find(m => m.id === mid)).filter(Boolean);
 
   return `
-    <div class="table-scene animate-scale">
+    <div class="table-scene ${liveClass} animate-scale">
+      <!-- Live / Dormant status banner -->
+      <div class="table-status-banner ${liveClass}">
+        <span class="status-pulse"></span>
+        ${isLive
+          ? `<span>Live now · ${activeMemberDetails.length} member${activeMemberDetails.length !== 1 ? 's' : ''} active</span>`
+          : `<span>Dormant · Last active ${timeAgo(table.lastActivity || 0)}</span>`
+        }
+      </div>
+
       <div class="table-container" style="width:${tableSize + 160}px;height:${tableSize + 160}px;position:relative">
+        <!-- Glow ring behind table -->
+        <div class="table-glow-ring ${liveClass}" style="width:${tableSize + 24}px;height:${tableSize + 24}px;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)"></div>
         <!-- The Round Table -->
-        <div class="round-table" style="width:${tableSize}px;height:${tableSize}px;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)">
+        <div class="round-table ${liveClass}" style="width:${tableSize}px;height:${tableSize}px;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)">
           <!-- Table center label -->
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:6">
             <div style="text-align:center">
-              <div style="font-size:11px;color:rgba(255,255,255,0.5);font-weight:500;letter-spacing:1px;text-transform:uppercase">${table.name}</div>
-              <div style="font-size:9px;color:rgba(255,255,255,0.3);margin-top:2px">${itemCount} items shared</div>
+              ${isLive ? `<div style="font-size:10px;color:rgba(52,199,89,0.8);font-weight:600;letter-spacing:1px;margin-bottom:2px">● LIVE</div>` : ''}
+              <div style="font-size:11px;color:rgba(255,255,255,${isLive ? '0.7' : '0.35'});font-weight:500;letter-spacing:1px;text-transform:uppercase">${table.name}</div>
+              <div style="font-size:9px;color:rgba(255,255,255,${isLive ? '0.45' : '0.2'});margin-top:2px">${itemCount} items shared</div>
             </div>
           </div>
           <!-- Items on the table -->
@@ -438,6 +485,8 @@ function renderMemberSeats(table, tableSize) {
   const seatRadius = tableSize / 2 + 50;
   const cx = tableSize / 2 + 80;
   const cy = tableSize / 2 + 80;
+  const activeIds = table.activeMembers || [];
+  const isLive = table.active;
 
   return members.map((m, i) => {
     if (!m) return '';
@@ -445,13 +494,15 @@ function renderMemberSeats(table, tableSize) {
     const x = cx + seatRadius * Math.cos(angle) - 22;
     const y = cy + seatRadius * Math.sin(angle) - 30;
     const statusColor = m.status === 'online' ? '#34C759' : m.status === 'away' ? '#FF9500' : '#8E8E93';
+    const isMemberActive = isLive && activeIds.includes(m.id);
     return `
-      <div class="member-seat animate-fade delay-${i % 5 + 1}" style="left:${x}px;top:${y}px" onclick="memberAction('${m.id}')">
+      <div class="member-seat ${isMemberActive ? 'is-active' : ''} animate-fade delay-${i % 5 + 1}" style="left:${x}px;top:${y}px" onclick="memberAction('${m.id}')">
         <div class="seat-avatar" style="background:${m.color}">
           ${m.initials}
           <div class="seat-status" style="background:${statusColor}"></div>
+          ${isMemberActive ? '<div class="member-active-ring"></div>' : ''}
         </div>
-        <div class="seat-name">${m.name}</div>
+        <div class="seat-name">${m.name}${isMemberActive ? ' <span style="color:var(--mac-green);font-size:9px">●</span>' : ''}</div>
       </div>
     `;
   }).join('');

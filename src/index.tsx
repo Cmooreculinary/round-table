@@ -32,7 +32,10 @@ const store = {
         { id: 'item-2', type: 'document', name: 'Budget 2026.xlsx', sharedBy: 'user-1', timestamp: Date.now() - 7200000 },
         { id: 'item-3', type: 'audio', name: 'Voice Note.m4a', sharedBy: 'user-3', timestamp: Date.now() - 1800000 },
       ],
-      color: '#007AFF'
+      color: '#007AFF',
+      active: true,
+      activeMembers: ['user-1', 'user-2'],
+      lastActivity: Date.now() - 120000
     },
     {
       id: 'table-2',
@@ -42,7 +45,10 @@ const store = {
         { id: 'item-4', type: 'video', name: 'Demo.mp4', sharedBy: 'user-4', timestamp: Date.now() - 900000 },
         { id: 'item-5', type: 'document', name: 'Proposal.docx', sharedBy: 'user-1', timestamp: Date.now() - 5400000 },
       ],
-      color: '#34C759'
+      color: '#34C759',
+      active: false,
+      activeMembers: [],
+      lastActivity: Date.now() - 86400000
     },
     {
       id: 'table-3',
@@ -54,7 +60,10 @@ const store = {
         { id: 'item-8', type: 'link', name: 'Sermon Video', sharedBy: 'user-5', timestamp: Date.now() - 4800000 },
         { id: 'item-9', type: 'audio', name: 'Hymn.mp3', sharedBy: 'user-4', timestamp: Date.now() - 3000000 },
       ],
-      color: '#AF52DE'
+      color: '#AF52DE',
+      active: true,
+      activeMembers: ['user-1', 'user-3', 'user-4'],
+      lastActivity: Date.now() - 30000
     },
   ],
   messages: [

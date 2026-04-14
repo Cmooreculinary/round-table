@@ -200,6 +200,49 @@ body {
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+/* Live table dot pulses */
+.table-dot.live {
+  box-shadow: 0 0 0 0 currentColor;
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52,199,89,0.5); transform: scale(1); }
+  50% { box-shadow: 0 0 6px 2px rgba(52,199,89,0.3); transform: scale(1.2); }
+}
+
+/* Dormant table row styling */
+.sidebar-table-item.dormant {
+  opacity: 0.55;
+}
+
+.sidebar-table-item.dormant:hover {
+  opacity: 0.8;
+}
+
+/* Live table row has subtle left accent */
+.sidebar-table-item.live {
+  position: relative;
+}
+
+.sidebar-table-item.live::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--mac-green);
+  opacity: 0.7;
+}
+
+.sidebar-table-item.active.live::before {
+  background: white;
+  opacity: 0.5;
 }
 
 .member-count {
@@ -313,6 +356,49 @@ body {
   position: relative;
 }
 
+/* Live status banner above table */
+.table-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+}
+
+.table-status-banner.live {
+  background: rgba(52,199,89,0.1);
+  color: #248A3D;
+  border: 1px solid rgba(52,199,89,0.25);
+}
+
+.table-status-banner.dormant {
+  background: rgba(142,142,147,0.1);
+  color: var(--mac-gray);
+  border: 1px solid rgba(142,142,147,0.2);
+}
+
+.table-status-banner .status-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mac-green);
+  animation: status-breathe 2s ease-in-out infinite;
+}
+
+.table-status-banner.dormant .status-pulse {
+  background: var(--mac-gray);
+  animation: none;
+}
+
+@keyframes status-breathe {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52,199,89,0.5); }
+  50% { opacity: 0.6; box-shadow: 0 0 8px 3px rgba(52,199,89,0.2); }
+}
+
 .table-container {
   position: relative;
   display: flex;
@@ -346,6 +432,144 @@ body {
   inset: 20%;
   border-radius: 50%;
   background: radial-gradient(ellipse at 40% 40%, rgba(255,255,255,0.06) 0%, transparent 70%);
+}
+
+/* ─── LIVE TABLE: Warm glow, animated ring, shimmer ─── */
+.round-table.live {
+  background: radial-gradient(ellipse at 30% 30%, #A07820 0%, #7B5B10 40%, #5A4008 80%);
+  box-shadow:
+    0 4px 20px rgba(0,0,0,0.3),
+    inset 0 2px 4px rgba(255,255,255,0.15),
+    0 0 0 6px #4A3508,
+    0 0 0 8px rgba(0,0,0,0.15),
+    0 0 30px 4px rgba(160,120,32,0.25);
+  animation: table-live-glow 3s ease-in-out infinite;
+}
+
+@keyframes table-live-glow {
+  0%, 100% { box-shadow: 0 4px 20px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.15), 0 0 0 6px #4A3508, 0 0 0 8px rgba(0,0,0,0.15), 0 0 30px 4px rgba(160,120,32,0.25); }
+  50% { box-shadow: 0 4px 20px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.15), 0 0 0 6px #5A4510, 0 0 0 8px rgba(0,0,0,0.12), 0 0 50px 10px rgba(180,140,40,0.35); }
+}
+
+.round-table.live::before {
+  border: 1.5px solid rgba(255,220,100,0.15);
+  animation: ring-rotate 12s linear infinite;
+}
+
+@keyframes ring-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Shimmer sweep across live table */
+.round-table.live::after {
+  background: linear-gradient(
+    135deg,
+    transparent 30%,
+    rgba(255,255,255,0.08) 45%,
+    rgba(255,255,255,0.12) 50%,
+    rgba(255,255,255,0.08) 55%,
+    transparent 70%
+  );
+  background-size: 200% 200%;
+  inset: 0;
+  animation: table-shimmer 4s ease-in-out infinite;
+}
+
+@keyframes table-shimmer {
+  0% { background-position: 150% 150%; }
+  100% { background-position: -50% -50%; }
+}
+
+/* Outer glow ring for live table (via JS-injected element) */
+.table-glow-ring {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.table-glow-ring.live {
+  border: 2px solid rgba(52,199,89,0.3);
+  animation: glow-ring-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes glow-ring-pulse {
+  0%, 100% { transform: translate(-50%,-50%) scale(1); opacity: 0.6; border-color: rgba(52,199,89,0.3); }
+  50% { transform: translate(-50%,-50%) scale(1.04); opacity: 1; border-color: rgba(52,199,89,0.5); }
+}
+
+.table-glow-ring.dormant {
+  border: 1px dashed rgba(142,142,147,0.2);
+}
+
+/* ─── DORMANT TABLE: Muted, desaturated, static ─── */
+.round-table.dormant {
+  background: radial-gradient(ellipse at 30% 30%, #6B5E3D 0%, #524A30 40%, #3A3424 80%);
+  box-shadow:
+    0 4px 14px rgba(0,0,0,0.2),
+    inset 0 1px 2px rgba(255,255,255,0.05),
+    0 0 0 5px #3A3424,
+    0 0 0 7px rgba(0,0,0,0.12);
+  filter: saturate(0.4) brightness(0.85);
+}
+
+.round-table.dormant::before {
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.round-table.dormant::after {
+  background: none;
+}
+
+/* Dormant member seats are faded */
+.table-scene.dormant .member-seat {
+  opacity: 0.5;
+}
+
+.table-scene.dormant .member-seat:hover {
+  opacity: 0.8;
+}
+
+/* Dormant items on table are faded */
+.table-scene.dormant .table-item {
+  opacity: 0.45;
+}
+
+.table-scene.dormant .table-item:hover {
+  opacity: 0.8;
+}
+
+/* Live member seats have subtle glow on avatar */
+.table-scene.live .member-seat .seat-avatar {
+  box-shadow: 0 3px 12px rgba(0,0,0,0.2), 0 0 0 0 rgba(52,199,89,0);
+}
+
+.table-scene.live .member-seat.is-active .seat-avatar {
+  animation: avatar-active-glow 2s ease-in-out infinite;
+}
+
+@keyframes avatar-active-glow {
+  0%, 100% { box-shadow: 0 3px 12px rgba(0,0,0,0.2), 0 0 8px 2px rgba(52,199,89,0.15); }
+  50% { box-shadow: 0 3px 12px rgba(0,0,0,0.2), 0 0 14px 4px rgba(52,199,89,0.3); }
+}
+
+/* Live table items have subtle float animation */
+.table-scene.live .table-item {
+  animation: item-float 3s ease-in-out infinite;
+}
+
+.table-scene.live .table-item:nth-child(2n) {
+  animation-delay: 0.5s;
+}
+
+.table-scene.live .table-item:nth-child(3n) {
+  animation-delay: 1s;
+}
+
+@keyframes item-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }
 
 /* Table Items (shown on the table surface) */
@@ -404,6 +628,21 @@ body {
 
 .member-seat:hover {
   transform: scale(1.1);
+}
+
+/* Active member indicator (they are online at the table right now) */
+.member-active-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--mac-green);
+  animation: member-ring-pulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes member-ring-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
 }
 
 .seat-avatar {
@@ -1434,4 +1673,141 @@ body {
   .mac-dock { bottom: 4px; padding: 3px 6px; }
   .dock-item { width: 40px; height: 40px; font-size: 18px; }
   .content-body { padding: 12px; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   LIVE vs DORMANT — Portal Widget Styling
+   ═══════════════════════════════════════════════════════ */
+
+/* Portal table row: live */
+.portal-table-row.live {
+  border-left: 3px solid var(--mac-green);
+  padding-left: 10px;
+  background: rgba(52,199,89,0.03);
+}
+
+.portal-table-row.dormant {
+  border-left: 3px solid transparent;
+  padding-left: 10px;
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+
+.portal-table-row.dormant:hover {
+  opacity: 0.85;
+}
+
+/* Live badge */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.live-badge.live {
+  background: rgba(52,199,89,0.12);
+  color: #248A3D;
+}
+
+.live-badge.dormant {
+  background: rgba(142,142,147,0.1);
+  color: var(--mac-gray);
+}
+
+.live-badge .badge-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.live-badge.live .badge-dot {
+  background: var(--mac-green);
+  animation: badge-dot-pulse 1.5s ease-in-out infinite;
+}
+
+.live-badge.dormant .badge-dot {
+  background: var(--mac-gray);
+}
+
+@keyframes badge-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Portal live table icon glow */
+.portal-table-icon.live {
+  box-shadow: 0 0 12px 2px rgba(52,199,89,0.3);
+}
+
+.portal-table-icon.dormant {
+  filter: saturate(0.3) brightness(0.8);
+}
+
+/* Active members avatars row under the table row */
+.active-members-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.active-member-pip {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 6px;
+  font-weight: 700;
+  color: white;
+  border: 1.5px solid white;
+  margin-left: -4px;
+}
+
+.active-member-pip:first-child {
+  margin-left: 0;
+}
+
+/* Content header live indicator */
+.header-live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-left: 10px;
+}
+
+.header-live-indicator.live {
+  background: rgba(52,199,89,0.1);
+  color: #248A3D;
+}
+
+.header-live-indicator.dormant {
+  background: rgba(142,142,147,0.08);
+  color: var(--mac-gray);
+}
+
+.header-live-indicator .indicator-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.header-live-indicator.live .indicator-dot {
+  background: var(--mac-green);
+  animation: badge-dot-pulse 1.5s ease-in-out infinite;
+}
+
+.header-live-indicator.dormant .indicator-dot {
+  background: var(--mac-gray);
 }
