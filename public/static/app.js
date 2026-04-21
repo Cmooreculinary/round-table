@@ -155,6 +155,9 @@ function renderOnboarding() {
   const step = steps[State.onboardingStep];
   const progress = ((State.onboardingStep + 1) / steps.length) * 100;
   const colors = ['#007AFF','#34C759','#FF9500','#AF52DE','#FF3B30','#FF2D55','#5AC8FA','#FFCC00'];
+  const initials = State.onboardingName.trim()
+    ? State.onboardingName.trim().split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase()
+    : '';
   
   return `
     <div class="onboarding-container">
@@ -185,29 +188,29 @@ function renderOnboarding() {
             </div>
           ` : State.onboardingStep === 1 ? `
             <div class="onboarding-form">
-              <div class="onboarding-avatar-preview" style="background:${State.onboardingColor}">
-                ${State.onboardingName ? State.onboardingName.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase() : '<i class="fas fa-user"></i>'}
+              <div class="onboarding-avatar-preview" id="obAvatar" style="background:${State.onboardingColor}">
+                ${initials || '<i class="fas fa-user"></i>'}
               </div>
               <h2>${step.title}</h2>
               <p>${step.subtitle}</p>
-              <input type="text" class="onboarding-input" id="obName" placeholder="Your full name" value="${State.onboardingName}" oninput="State.onboardingName=this.value;render()">
+              <input type="text" class="onboarding-input" id="obName" placeholder="Your full name" value="${State.onboardingName}" oninput="updateNamePreview(this.value)">
             </div>
           ` : State.onboardingStep === 2 ? `
             <div class="onboarding-form">
-              <div class="onboarding-avatar-preview" style="background:${State.onboardingColor}">
-                ${State.onboardingName ? State.onboardingName.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase() : 'YO'}
+              <div class="onboarding-avatar-preview" id="obAvatar" style="background:${State.onboardingColor}">
+                ${initials || 'YO'}
               </div>
               <h2>${step.title}</h2>
               <p>${step.subtitle}</p>
               <div class="onboarding-colors">
                 ${colors.map(c => `
-                  <button class="onboarding-color-btn ${State.onboardingColor === c ? 'selected' : ''}" style="background:${c}" onclick="State.onboardingColor='${c}';render()"></button>
+                  <button class="onboarding-color-btn ${State.onboardingColor === c ? 'selected' : ''}" style="background:${c}" data-color="${c}" onclick="selectOnboardColor('${c}')"></button>
                 `).join('')}
               </div>
             </div>
           ` : State.onboardingStep === 3 ? `
             <div class="onboarding-form">
-              <div class="onboarding-table-preview" style="border-color:${State.onboardingColor}">
+              <div class="onboarding-table-preview" id="obTablePreview" style="border-color:${State.onboardingColor}">
                 <i class="fas fa-circle-nodes" style="color:${State.onboardingColor}"></i>
               </div>
               <h2>${step.title}</h2>
@@ -215,7 +218,7 @@ function renderOnboarding() {
               <input type="text" class="onboarding-input" id="obTable" placeholder="e.g. Family Circle, Project Team, Study Group" value="${State.onboardingTableName}" oninput="State.onboardingTableName=this.value">
               <div class="onboarding-suggestions">
                 ${['Family Circle','Faith Group','Work Team','Friend Group','Study Group'].map(s => `
-                  <button class="onboarding-suggestion" onclick="State.onboardingTableName='${s}';document.getElementById('obTable').value='${s}'">${s}</button>
+                  <button class="onboarding-suggestion" onclick="pickTableSuggestion('${s}')">${s}</button>
                 `).join('')}
               </div>
             </div>
@@ -228,17 +231,15 @@ function renderOnboarding() {
               <p>${step.subtitle}</p>
               <input type="email" class="onboarding-input" id="obInviteEmail" placeholder="friend@email.com" onkeypress="if(event.key==='Enter')addOnboardInvite()">
               <button class="onboarding-add-btn" onclick="addOnboardInvite()"><i class="fas fa-plus"></i> Add</button>
-              ${State.onboardingInvited.length > 0 ? `
-                <div class="onboarding-invited-list">
-                  ${State.onboardingInvited.map((email, i) => `
-                    <div class="onboarding-invited-item">
-                      <i class="fas fa-check-circle" style="color:var(--mac-green)"></i>
-                      <span>${email}</span>
-                      <button onclick="State.onboardingInvited.splice(${i},1);render()" style="background:none;border:none;color:var(--mac-red);cursor:pointer;font-size:12px"><i class="fas fa-times"></i></button>
-                    </div>
-                  `).join('')}
-                </div>
-              ` : ''}
+              <div class="onboarding-invited-list" id="obInvitedList">
+                ${State.onboardingInvited.map((email, i) => `
+                  <div class="onboarding-invited-item">
+                    <i class="fas fa-check-circle" style="color:var(--mac-green)"></i>
+                    <span>${email}</span>
+                    <button onclick="removeOnboardInvite(${i})" style="background:none;border:none;color:var(--mac-red);cursor:pointer;font-size:12px"><i class="fas fa-times"></i></button>
+                  </div>
+                `).join('')}
+              </div>
               <p class="onboarding-skip-hint">You can also skip this and invite people later.</p>
             </div>
           `}
@@ -259,28 +260,92 @@ function renderOnboarding() {
   `;
 }
 
+// ─── Onboarding helpers (NO full re-render) ───
+function updateNamePreview(value) {
+  State.onboardingName = value;
+  const avatar = document.getElementById('obAvatar');
+  if (avatar) {
+    const initials = value.trim() ? value.trim().split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase() : '<i class="fas fa-user"></i>';
+    avatar.innerHTML = initials;
+  }
+}
+
+function selectOnboardColor(color) {
+  State.onboardingColor = color;
+  // Update avatar background
+  const avatar = document.getElementById('obAvatar');
+  if (avatar) avatar.style.background = color;
+  // Update selected state on buttons via data attribute
+  document.querySelectorAll('.onboarding-color-btn').forEach(btn => {
+    const btnColor = btn.getAttribute('data-color') || '';
+    btn.classList.toggle('selected', btnColor === color);
+  });
+}
+
+function pickTableSuggestion(name) {
+  State.onboardingTableName = name;
+  const input = document.getElementById('obTable');
+  if (input) input.value = name;
+}
+
+function removeOnboardInvite(index) {
+  State.onboardingInvited.splice(index, 1);
+  renderOnboardInviteList();
+}
+
+function renderOnboardInviteList() {
+  const list = document.getElementById('obInvitedList');
+  if (list) {
+    list.innerHTML = State.onboardingInvited.map((email, i) => `
+      <div class="onboarding-invited-item">
+        <i class="fas fa-check-circle" style="color:var(--mac-green)"></i>
+        <span>${email}</span>
+        <button onclick="removeOnboardInvite(${i})" style="background:none;border:none;color:var(--mac-red);cursor:pointer;font-size:12px"><i class="fas fa-times"></i></button>
+      </div>
+    `).join('');
+  }
+}
+
 function onboardBack() {
-  if (State.onboardingStep > 0) { State.onboardingStep--; render(); }
+  // Save input values before navigating
+  if (State.onboardingStep === 1) {
+    const el = document.getElementById('obName');
+    if (el) State.onboardingName = el.value;
+  }
+  if (State.onboardingStep === 3) {
+    const el = document.getElementById('obTable');
+    if (el) State.onboardingTableName = el.value;
+  }
+  State.onboardingStep--;
+  render();
 }
 
 function onboardNext() {
+  // Save input values
+  if (State.onboardingStep === 1) {
+    const el = document.getElementById('obName');
+    if (el) State.onboardingName = el.value;
+  }
+  if (State.onboardingStep === 3) {
+    const el = document.getElementById('obTable');
+    if (el) State.onboardingTableName = el.value;
+  }
+  
   // Validate current step
   if (State.onboardingStep === 1 && !State.onboardingName.trim()) {
-    document.getElementById('obName')?.focus();
-    document.getElementById('obName')?.classList.add('shake');
-    setTimeout(() => document.getElementById('obName')?.classList.remove('shake'), 500);
+    const input = document.getElementById('obName');
+    if (input) { input.focus(); input.classList.add('shake'); setTimeout(() => input.classList.remove('shake'), 500); }
     return;
   }
   
   if (State.onboardingStep === 4) {
-    // Complete onboarding
     completeOnboarding();
     return;
   }
   
   State.onboardingStep++;
   render();
-  // Focus inputs
+  // Focus inputs after render
   setTimeout(() => {
     if (State.onboardingStep === 1) document.getElementById('obName')?.focus();
     if (State.onboardingStep === 3) document.getElementById('obTable')?.focus();
@@ -294,8 +359,8 @@ function addOnboardInvite() {
   if (email && email.includes('@') && !State.onboardingInvited.includes(email)) {
     State.onboardingInvited.push(email);
     input.value = '';
-    render();
-    setTimeout(() => document.getElementById('obInviteEmail')?.focus(), 50);
+    renderOnboardInviteList();
+    input.focus();
   }
 }
 
