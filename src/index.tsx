@@ -92,6 +92,11 @@ function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;')
 }
 
+function safeMember(m: any): any {
+  if (!m) return null
+  return { id: m.id, name: m.name, initials: m.initials, color: m.color, status: m.status }
+}
+
 function generateId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
 }
@@ -353,7 +358,7 @@ app.get('/api/members', (c) => {
 app.get('/api/tables', (c) => {
   const tables = store.tables.map(t => ({
     ...t,
-    memberDetails: t.members.map(mid => store.members.find(m => m.id === mid)).filter(Boolean).map(m => ({ id: m!.id, name: m!.name, initials: m!.initials, color: m!.color, status: m!.status }))
+    memberDetails: t.members.map(mid => safeMember(store.members.find(m => m.id === mid))).filter(Boolean)
   }))
   return c.json(tables)
 })
@@ -363,7 +368,7 @@ app.get('/api/tables/:id', (c) => {
   if (!table) return c.json({ error: 'Not found' }, 404)
   return c.json({
     ...table,
-    memberDetails: table.members.map(mid => store.members.find(m => m.id === mid)).filter(Boolean).map(m => ({ id: m!.id, name: m!.name, initials: m!.initials, color: m!.color, status: m!.status }))
+    memberDetails: table.members.map(mid => safeMember(store.members.find(m => m.id === mid))).filter(Boolean)
   })
 })
 
@@ -409,8 +414,8 @@ app.get('/api/messages', (c) => {
   }
   return c.json(msgs.map(m => ({
     ...m,
-    fromMember: store.members.find(mb => mb.id === m.from),
-    toMember: store.members.find(mb => mb.id === m.to),
+    fromMember: safeMember(store.members.find(mb => mb.id === m.from)),
+    toMember: safeMember(store.members.find(mb => mb.id === m.to)),
   })))
 })
 
@@ -426,7 +431,7 @@ app.post('/api/messages', async (c) => {
 
 // ─── Event Routes ───
 app.get('/api/events', (c) => {
-  return c.json(store.events.map(e => ({ ...e, tableName: store.tables.find(t => t.id === e.table)?.name, sharedByMember: store.members.find(m => m.id === e.sharedBy) })))
+  return c.json(store.events.map(e => ({ ...e, tableName: store.tables.find(t => t.id === e.table)?.name, sharedByMember: safeMember(store.members.find(m => m.id === e.sharedBy)) })))
 })
 
 app.post('/api/events', async (c) => {
@@ -445,7 +450,7 @@ app.post('/api/events', async (c) => {
 
 // ─── Notification Routes ───
 app.get('/api/notifications', (c) => {
-  return c.json(store.notifications.map(n => ({ ...n, fromMember: store.members.find(m => m.id === n.from) })))
+  return c.json(store.notifications.map(n => ({ ...n, fromMember: safeMember(store.members.find(m => m.id === n.from)) })))
 })
 
 app.post('/api/walkie/ping', async (c) => {
@@ -465,7 +470,7 @@ app.get('/api/emails', (c) => {
   if (folder === 'starred') emails = emails.filter(e => e.starred)
   else if (folder !== 'all') emails = emails.filter(e => e.folder === folder)
   return c.json(emails.map(e => ({
-    ...e, fromMember: store.members.find(m => m.id === e.from), toMember: store.members.find(m => m.id === e.to),
+    ...e, fromMember: safeMember(store.members.find(m => m.id === e.from)), toMember: safeMember(store.members.find(m => m.id === e.to)),
   })).sort((a, b) => b.timestamp - a.timestamp))
 })
 
@@ -498,7 +503,7 @@ app.get('/api/texts', (c) => {
   const user = getCurrentUser(c)
   let texts = store.texts
   if (withUser) texts = texts.filter(t => (t.from === user.id && t.to === withUser) || (t.from === withUser && t.to === user.id))
-  return c.json(texts.map(t => ({ ...t, fromMember: store.members.find(m => m.id === t.from), toMember: store.members.find(m => m.id === t.to) })).sort((a, b) => a.timestamp - b.timestamp))
+  return c.json(texts.map(t => ({ ...t, fromMember: safeMember(store.members.find(m => m.id === t.from)), toMember: safeMember(store.members.find(m => m.id === t.to)) })).sort((a, b) => a.timestamp - b.timestamp))
 })
 
 app.post('/api/texts', async (c) => {
@@ -513,7 +518,11 @@ app.post('/api/texts', async (c) => {
 
 // ─── Invite Routes ───
 app.get('/api/invites', (c) => {
-  return c.json(store.invites.map(inv => ({ ...inv, table: store.tables.find(t => t.id === inv.tableId), creator: store.members.find(m => m.id === inv.createdBy) })))
+  return c.json(store.invites.map(inv => ({
+    ...inv,
+    table: store.tables.find(t => t.id === inv.tableId) ? { id: inv.tableId, name: store.tables.find(t => t.id === inv.tableId)!.name, color: store.tables.find(t => t.id === inv.tableId)!.color } : null,
+    creator: (() => { const m = store.members.find(m => m.id === inv.createdBy); return m ? { id: m.id, name: m.name, initials: m.initials, color: m.color } : null; })()
+  })))
 })
 
 app.post('/api/invites', async (c) => {
@@ -585,9 +594,16 @@ app.get('/api/referrals', (c) => {
 
 app.get('/api/referrals/leaderboard', (c) => {
   const board = Object.entries(store.referrals).map(([uid, data]) => ({
-    member: store.members.find(m => m.id === uid), ...data
+    member: safeMember(store.members.find(m => m.id === uid)), ...data
   })).sort((a, b) => b.joined - a.joined)
   return c.json(board)
+})
+
+// ─── Favicon ───
+app.get('/favicon.ico', (c) => {
+  // SVG favicon as data URI - round table icon
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#007AFF"/><circle cx="16" cy="16" r="8" fill="none" stroke="white" stroke-width="2"/><circle cx="16" cy="8" r="2.5" fill="white"/><circle cx="22.9" cy="20" r="2.5" fill="white"/><circle cx="9.1" cy="20" r="2.5" fill="white"/></svg>`
+  return new Response(svg, { headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' } })
 })
 
 // ─── Invite Join Landing Page ───

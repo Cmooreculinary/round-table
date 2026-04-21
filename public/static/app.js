@@ -47,21 +47,33 @@ const State = {
 };
 
 // ─── API ───
+let csrfToken = null;
 const API = {
   async get(url) { const r = await fetch(url); return r.json(); },
   async post(url, data) {
+    if (!csrfToken) await API.refreshCsrf();
     const r = await fetch(url, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
       body: JSON.stringify(data),
     });
+    if (r.status === 403) { await API.refreshCsrf(); return API.post(url, data); }
     return r.json();
   },
   async put(url, data) {
+    if (!csrfToken) await API.refreshCsrf();
     const r = await fetch(url, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
       body: JSON.stringify(data),
     });
+    if (r.status === 403) { await API.refreshCsrf(); return API.put(url, data); }
     return r.json();
+  },
+  async refreshCsrf() {
+    const r = await fetch('/api/csrf-token');
+    const data = await r.json();
+    csrfToken = data.token;
   },
 };
 
@@ -1682,8 +1694,24 @@ async function createInvite() {
   render();
 }
 function copyInvite(code) {
-  navigator.clipboard?.writeText(`https://roundtable.app/join/${code}`);
-  alert(`Invite link copied: https://roundtable.app/join/${code}`);
+  const baseUrl = window.location.origin;
+  const link = `${baseUrl}/join/${code}`;
+  navigator.clipboard?.writeText(link);
+  showCopyToast(`Invite link copied!`);
+}
+
+function showCopyToast(msg) {
+  let toast = document.getElementById('copyToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'copyToast';
+    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:#1D1D1F;color:white;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;opacity:0;transition:all 0.3s ease;z-index:9999;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(-50%) translateY(20px)'; }, 2500);
 }
 
 // Contacts
@@ -1699,7 +1727,7 @@ async function addContact() {
 async function inviteContact(contactId) {
   const contact = State.contacts.find(c => c.id === contactId);
   await API.post(`/api/contacts/${contactId}/invite`);
-  alert(`Invite sent to ${contact?.name} via ${contact?.phone || contact?.email}`);
+  showCopyToast(`Invite sent to ${contact?.name}`);
 }
 
 // Walkie Talkie
