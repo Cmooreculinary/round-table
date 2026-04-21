@@ -49,25 +49,25 @@ const State = {
 // ─── API ───
 let csrfToken = null;
 const API = {
-  async get(url) { const r = await fetch(url); return r.json(); },
-  async post(url, data) {
+  async get(url) { const r = await fetch(url); if (!r.ok) throw new Error(`GET ${url} failed: ${r.status}`); return r.json(); },
+  async post(url, data, _retry = false) {
     if (!csrfToken) await API.refreshCsrf();
     const r = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
       body: JSON.stringify(data),
     });
-    if (r.status === 403) { await API.refreshCsrf(); return API.post(url, data); }
+    if (r.status === 403 && !_retry) { await API.refreshCsrf(); return API.post(url, data, true); }
     return r.json();
   },
-  async put(url, data) {
+  async put(url, data, _retry = false) {
     if (!csrfToken) await API.refreshCsrf();
     const r = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
       body: JSON.stringify(data),
     });
-    if (r.status === 403) { await API.refreshCsrf(); return API.put(url, data); }
+    if (r.status === 403 && !_retry) { await API.refreshCsrf(); return API.put(url, data, true); }
     return r.json();
   },
   async refreshCsrf() {
@@ -82,33 +82,44 @@ async function init() {
   // Apply dark mode immediately
   if (State.darkMode) document.body.classList.add('dark-mode');
 
-  const [me, members, tables, messages, events, notifications, emails, texts, invites, contacts, referrals, leaderboard] = await Promise.all([
-    API.get('/api/me'),
-    API.get('/api/members'),
-    API.get('/api/tables'),
-    API.get('/api/messages'),
-    API.get('/api/events'),
-    API.get('/api/notifications'),
-    API.get('/api/emails'),
-    API.get('/api/texts'),
-    API.get('/api/invites'),
-    API.get('/api/contacts'),
-    API.get('/api/referrals'),
-    API.get('/api/referrals/leaderboard'),
-  ]);
-  State.currentUser = me;
-  State.members = members;
-  State.tables = tables;
-  State.messages = messages;
-  State.events = events;
-  State.notifications = notifications;
-  State.emails = emails;
-  State.texts = texts;
-  State.invites = invites;
-  State.contacts = contacts;
-  State.referrals = referrals;
-  State.leaderboard = leaderboard;
-  render();
+  try {
+    const [me, members, tables, messages, events, notifications, emails, texts, invites, contacts, referrals, leaderboard] = await Promise.all([
+      API.get('/api/me'),
+      API.get('/api/members'),
+      API.get('/api/tables'),
+      API.get('/api/messages'),
+      API.get('/api/events'),
+      API.get('/api/notifications'),
+      API.get('/api/emails'),
+      API.get('/api/texts'),
+      API.get('/api/invites'),
+      API.get('/api/contacts'),
+      API.get('/api/referrals'),
+      API.get('/api/referrals/leaderboard'),
+    ]);
+    State.currentUser = me;
+    State.members = members || [];
+    State.tables = tables || [];
+    State.messages = messages || [];
+    State.events = events || [];
+    State.notifications = notifications || [];
+    State.emails = emails || [];
+    State.texts = texts || [];
+    State.invites = invites || [];
+    State.contacts = contacts || [];
+    State.referrals = referrals || { invited: 0, joined: 0, badge: 'Newcomer' };
+    State.leaderboard = leaderboard || [];
+    render();
+  } catch (err) {
+    console.error('Init error:', err);
+    document.getElementById('app').innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px;color:var(--text-secondary,#86868B)">
+        <i class="fas fa-exclamation-triangle" style="font-size:36px;color:#FF9500"></i>
+        <p style="font-size:14px;font-weight:500">Failed to load. Please refresh.</p>
+        <button onclick="location.reload()" style="padding:8px 20px;background:#007AFF;color:white;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">Retry</button>
+      </div>
+    `;
+  }
 }
 
 // ─── Render ───
@@ -250,7 +261,7 @@ function renderOnboarding() {
             <button class="onboarding-btn secondary" onclick="onboardBack()">
               <i class="fas fa-arrow-left"></i> Back
             </button>
-          ` : '<div></div>'}
+          ` : `<button style="background:none;border:none;color:#86868B;font-size:12px;cursor:pointer;font-family:inherit;padding:8px" onclick="skipOnboarding()">Skip Tour</button>`}
           <button class="onboarding-btn primary" onclick="onboardNext()">
             ${State.onboardingStep === steps.length - 1 ? '<i class="fas fa-rocket"></i> Get Started' : 'Continue <i class="fas fa-arrow-right"></i>'}
           </button>
@@ -362,6 +373,12 @@ function addOnboardInvite() {
     renderOnboardInviteList();
     input.focus();
   }
+}
+
+function skipOnboarding() {
+  localStorage.setItem('rt-onboarded', 'true');
+  State.onboardingComplete = true;
+  render();
 }
 
 async function completeOnboarding() {
@@ -1005,7 +1022,7 @@ function renderContacts() {
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
         <div style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--input-bg);border-radius:8px;border:1px solid var(--border-color)">
           <i class="fas fa-search" style="font-size:12px;color:var(--text-secondary)"></i>
-          <input type="text" placeholder="Search contacts..." style="border:none;background:none;font-size:13px;outline:none;width:100%;font-family:inherit;color:var(--text-primary)" oninput="State.contactSearch=this.value;render()">
+          <input type="text" placeholder="Search contacts..." value="${State.contactSearch}" style="border:none;background:none;font-size:13px;outline:none;width:100%;font-family:inherit;color:var(--text-primary)" oninput="filterContacts(this.value)">
         </div>
         <button class="mac-btn mac-btn-primary" onclick="openModal('addContact')">
           <i class="fas fa-plus"></i> Add Contact
@@ -1529,6 +1546,14 @@ function renderModal() {
       </div>
       <div class="modal-footer"><button class="mac-btn mac-btn-secondary" onclick="closeModal()">Cancel</button><button class="mac-btn mac-btn-primary" onclick="addContact()">Add Contact</button></div>
     `;
+  } else if (State.modalOpen === 'quickShare') {
+    content = `
+      <div class="modal-header"><h3>Share ${State._quickShareLabel || 'Item'}</h3><button class="mac-btn-icon" onclick="closeModal()"><i class="fas fa-times"></i></button></div>
+      <div class="modal-body">
+        <div class="form-group"><label class="form-label">${State._quickShareLabel || 'Item'} Name</label><input type="text" class="form-input" id="quickShareName" placeholder="My ${State._quickShareLabel || 'Item'}" value="My ${State._quickShareLabel || 'Item'}" onkeypress="if(event.key==='Enter')confirmQuickShare()"></div>
+      </div>
+      <div class="modal-footer"><button class="mac-btn mac-btn-secondary" onclick="closeModal()">Cancel</button><button class="mac-btn mac-btn-primary" onclick="confirmQuickShare()"><i class="fas fa-share"></i> Share</button></div>
+    `;
   } else if (State.modalOpen === 'notifications') {
     content = `
       <div class="modal-header"><h3>Notifications</h3><button class="mac-btn-icon" onclick="closeModal()"><i class="fas fa-times"></i></button></div>
@@ -1724,13 +1749,24 @@ async function createTable() {
 
 // Share items
 async function quickShareItem(type, label) {
-  if (!State.currentTable) return;
-  const name = prompt(`Enter ${label.toLowerCase()} name:`, `My ${label}`);
-  if (!name) return;
-  const item = await API.post(`/api/tables/${State.currentTable}/items`, { type, name, sharedBy: 'user-1' });
+  if (!State.currentTable) { showCopyToast('Select a table first'); return; }
+  // Show inline name input instead of blocking prompt()
+  State.modalOpen = 'quickShare';
+  State._quickShareType = type;
+  State._quickShareLabel = label;
+  render();
+  setTimeout(() => document.getElementById('quickShareName')?.focus(), 100);
+}
+
+async function confirmQuickShare() {
+  const nameEl = document.getElementById('quickShareName');
+  const name = nameEl?.value?.trim();
+  if (!name) { nameEl?.focus(); return; }
+  const item = await API.post(`/api/tables/${State.currentTable}/items`, { type: State._quickShareType, name });
   const table = State.tables.find(t => t.id === State.currentTable);
-  if (table) table.items.push(item);
+  if (table && item?.id) table.items.push(item);
   closeModal(); render();
+  showCopyToast(`${State._quickShareLabel} shared to table`);
 }
 function handleFileDrop(event) { if (event.dataTransfer?.files?.length > 0) handleFiles(event.dataTransfer.files); }
 function handleFileSelect(input) { if (input.files.length > 0) handleFiles(input.files); }
@@ -1780,6 +1816,14 @@ function showCopyToast(msg) {
 }
 
 // Contacts
+// Contacts - debounced search
+let _contactSearchTimer = null;
+function filterContacts(value) {
+  State.contactSearch = value;
+  clearTimeout(_contactSearchTimer);
+  _contactSearchTimer = setTimeout(() => render(), 200);
+}
+
 async function addContact() {
   const name = document.getElementById('contactName')?.value;
   const phone = document.getElementById('contactPhone')?.value;

@@ -1,77 +1,168 @@
 # Round Table
 
-A beautifully crafted collaboration platform designed to bring groups of people together — for family, faith, projects, and more. Built with a macOS-inspired UI for simplicity and elegance.
+**Where your people gather.** A macOS-styled unified collaboration platform that replaces the fragmented mess of Slack, WhatsApp, Google Suite, email, and text messaging with a single, visually intuitive interface organized around the metaphor of gathering at a table.
 
-## Features
+Built for families, faith communities, project teams, and neighborhoods.
 
-### The Round Table (Core)
-- **Dynamic table visualization** — When 2 people join, a small table appears with their icons. More people = larger table. Shared items appear on the table surface.
-- **Create unlimited tables** — Family Circle, Project Teams, Faith Groups, Study Groups, etc.
-- **Share items to the table** — Photos, videos, audio, documents, links, notes — all visible on the table surface for group editing
+## Live URLs
 
-### Personal Portal
-- **Dashboard widgets** — Today's schedule, recent shared items, unread messages, quick actions
-- **macOS-style dock** — Quick access to all features from anywhere
+- **Preview**: https://3000-iwvsgsrstz8hjhpi7s3t2-8f57ffe2.sandbox.novita.ai
+- **GitHub**: https://github.com/Cmooreculinary/round-table
 
-### Shared Calendar
-- **Interactive monthly view** — Click any day to add events
-- **Color-coded by table** — Each table has its own color for easy visual identification
-- **Table filter chips** — Filter events by table group
+## Features (39+ Implemented)
 
-### Messaging
-- **iMessage-style chat** — Text conversations with any member
-- **Thread view** — See all conversations at a glance with unread indicators
-- **Quick actions** — Jump to walkie-talkie or video call from any conversation
+### Core
+- **Round Table Visualization** - Live/dormant states with animated glow, shimmer, member seats
+- **5-Step Onboarding Wizard** - Welcome, Profile, Color, First Table, Invite (with Skip option)
+- **Dark/Light Mode** - Smooth theme transitions with localStorage persistence
+- **macOS Dock** - Glass morphism, hover effects, tooltips, badge counts
 
-### Walkie Talkie
-- **Push-to-talk** — Hold the button to talk live with any online member
-- **Audio beep notification** — Two-tone beep when someone pings you
-- **Ping notifications** — Toast-style notification with answer/dismiss buttons
-- **Slide-up panel** — Accessible from dock or any conversation
+### Communications Hub
+- **Email Client** - Inbox, Sent, Starred, Compose, Reply, Star toggle
+- **iMessage-style Texting** - Green/gray bubbles, thread sidebar, SMS labels
+- **Direct Messages** - Two-panel chat with walkie/video shortcuts
+- **Walkie-Talkie** - Push-to-talk, ping notifications, Web Audio beeps
 
-### Video Calling
-- **Full-screen call UI** — Professional call interface with mute, video, and hangup controls
-- **Accessible everywhere** — Start calls from messages, walkie talkie, or member profiles
+### Collaboration
+- **Shared Calendar** - Monthly grid, color-coded events, table filters
+- **File Sharing** - Drag-and-drop, 8 file types, modal-based naming
+- **Contacts** - Search, On/Not-On sections, invite/chat buttons
+- **App Launcher** - 24 apps (Apple, Google, Microsoft) with filters
 
-### App Launcher
-- **Apple ecosystem** — Photos, Pages, Numbers, Keynote, Notes, Reminders, FaceTime, Finder, Music, iCloud
-- **Google family** — Docs, Sheets, Slides, Drive, Meet, Calendar, Gmail
-- **Microsoft Office** — Word, Excel, PowerPoint, OneDrive, Teams, Outlook
-- **Filter by platform** — Quick filter buttons for All, Apple, Google, Microsoft
+### Social
+- **Invite System** - Generate codes, copy links, usage/expiry tracking
+- **Join Flow** - `/join/:code` landing page with register/login
+- **Referral Tracking** - Invited/joined counts, badge progression, leaderboard
+- **Video Call UI** - Full-screen overlay with controls
 
-### File Sharing
-- **Drag & drop** — Drag files directly onto the share modal
-- **Quick share buttons** — One-click sharing for photos, documents, videos, audio, links, notes, sheets, presentations
-- **Type detection** — Automatic file type detection with appropriate icons and colors
+### Security
+- **Authentication** - SHA-256 + salt via Web Crypto, HttpOnly SameSite cookies
+- **CSRF Protection** - Token-based on all POST/PUT/DELETE endpoints
+- **XSS Prevention** - `escapeHtml()` on all user input
+- **Rate Limiting** - 100 req/min/IP, sliding window, auto-cleanup
+- **Security Headers** - HSTS, CSP, X-Frame-Options DENY, X-Content-Type-Options, Referrer-Policy
+- **Input Validation** - Typed validators for email, password, names, colors, dates, etc.
 
-## URLs
-- **Sandbox**: [Live Preview](https://3000-iwvsgsrstz8hjhpi7s3t2-8f57ffe2.sandbox.novita.ai)
+## API Endpoints (30+)
 
-## API Endpoints
-
+### Authentication
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/me` | Current user info |
-| GET | `/api/members` | All members |
-| GET | `/api/tables` | All tables with member details |
+| POST | `/api/auth/register` | Create account (name, email, password) |
+| POST | `/api/auth/login` | Login (returns session token + cookie) |
+| POST | `/api/auth/logout` | Destroy session |
+| GET | `/api/csrf-token` | Get CSRF token |
+
+### User & Members
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/me` | Current user profile |
+| PUT | `/api/me` | Update name, color, status, email |
+| GET | `/api/members` | All members (safe: no passwordHash) |
+
+### Tables
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/tables` | List tables with member details |
 | GET | `/api/tables/:id` | Single table |
-| POST | `/api/tables` | Create new table |
-| POST | `/api/tables/:id/items` | Add item to table |
-| GET | `/api/messages` | All messages (filter with `?with=userId`) |
+| POST | `/api/tables` | Create table |
+| PUT | `/api/tables/:id` | Update table |
+| DELETE | `/api/tables/:id` | Delete table (creator only) |
+| POST | `/api/tables/:id/items` | Add shared item |
+| DELETE | `/api/tables/:id/items/:itemId` | Remove item |
+
+### Communications
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/messages?with=userId` | Chat messages |
 | POST | `/api/messages` | Send message |
+| GET | `/api/emails?folder=inbox` | Emails by folder |
+| POST | `/api/emails` | Send email |
+| POST | `/api/emails/:id/read` | Mark read |
+| POST | `/api/emails/:id/star` | Toggle star |
+| GET | `/api/texts?with=userId` | Text thread |
+| POST | `/api/texts` | Send text |
+
+### Calendar & Notifications
+| Method | Path | Description |
+|--------|------|-------------|
 | GET | `/api/events` | Calendar events |
 | POST | `/api/events` | Create event |
-| GET | `/api/notifications` | Notifications |
+| DELETE | `/api/events/:id` | Delete event |
+| GET | `/api/notifications` | All notifications |
+| POST | `/api/notifications/read-all` | Mark all read |
 | POST | `/api/walkie/ping` | Ping a user |
 
+### Social
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/invites` | Active invites |
+| POST | `/api/invites` | Create invite code |
+| POST | `/api/invites/join` | Join via code |
+| DELETE | `/api/invites/:id` | Delete invite |
+| GET | `/api/contacts` | All contacts |
+| POST | `/api/contacts` | Add contact |
+| DELETE | `/api/contacts/:id` | Remove contact |
+| POST | `/api/contacts/:id/invite` | Invite contact |
+| GET | `/api/referrals` | Referral stats |
+| GET | `/api/referrals/leaderboard` | Top inviters |
+
+### Pages
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/` | Main app |
+| GET | `/join/:code` | Invite join landing page |
+| GET | `/favicon.ico` | SVG favicon |
+
 ## Tech Stack
-- **Backend**: Hono framework on Cloudflare Pages
-- **Frontend**: Vanilla JS with Tailwind CSS (CDN)
+
+- **Backend**: Hono v4 on Cloudflare Pages
+- **Frontend**: Vanilla JS (~1,900 lines) + Tailwind CSS (CDN)
+- **CSS**: Custom macOS design system (~3,100 lines) with full dark mode
 - **Icons**: Font Awesome 6.5
 - **Audio**: Web Audio API (walkie-talkie beeps)
-- **Design**: macOS-inspired UI with system font stack
+- **Design**: macOS-inspired with Apple system font stack
+- **Build**: Vite + @hono/vite-cloudflare-pages
+- **Security**: Web Crypto API (SHA-256), CSRF tokens, XSS escaping
+
+## Project Structure
+
+```
+round-table/
+├── src/
+│   └── index.tsx              # Hono server, 30+ API routes, HTML pages
+├── public/
+│   └── static/
+│       ├── app.js             # Full frontend application
+│       └── style.css          # Complete macOS design system
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+├── wrangler.jsonc
+├── ecosystem.config.cjs       # PM2 dev config
+├── EMERGENT_PROMPT.md          # Full build specification
+├── EXPLAINER.md                # Product explainer
+├── PROBLEMS_SOLVED.md          # 65 problems solved
+└── README.md                   # This file
+```
+
+## Development
+
+```bash
+npm run build          # Build for production
+npm run dev:sandbox    # Start dev server (port 3000)
+pm2 start ecosystem.config.cjs  # Start with PM2
+```
 
 ## Deployment
+
 - **Platform**: Cloudflare Pages
-- **Status**: ✅ Active (Development)
-- **Last Updated**: 2026-04-14
+- **Status**: Launch-Ready
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist/`
+- **Production Branch**: `main`
+- **Last Updated**: 2026-04-21
+
+## License
+
+Proprietary - All Rights Reserved
