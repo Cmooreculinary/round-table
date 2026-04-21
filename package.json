@@ -9,7 +9,8 @@
     "deploy": "npm run build && wrangler pages deploy dist"
   },
   "dependencies": {
-    "hono": "^4.12.12"
+    "hono": "^4.12.12",
+    "playwright": "^1.59.1"
   },
   "devDependencies": {
     "@hono/vite-build": "^1.2.0",

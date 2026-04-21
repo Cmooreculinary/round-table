@@ -24,9 +24,8 @@ const State = {
   currentUser: null,
   calendarMonth: new Date().getMonth(),
   calendarYear: new Date().getFullYear(),
-  // New state
   darkMode: localStorage.getItem('rt-dark-mode') === 'true',
-  commsTab: 'email', // email | texts | chat | walkie
+  commsTab: 'email',
   emails: [],
   emailFolder: 'inbox',
   emailReading: null,
@@ -38,6 +37,13 @@ const State = {
   contactSearch: '',
   referrals: null,
   leaderboard: [],
+  // Onboarding
+  onboardingStep: 0,
+  onboardingComplete: localStorage.getItem('rt-onboarded') === 'true',
+  onboardingName: '',
+  onboardingColor: '#007AFF',
+  onboardingTableName: '',
+  onboardingInvited: [],
 };
 
 // ─── API ───
@@ -46,6 +52,13 @@ const API = {
   async post(url, data) {
     const r = await fetch(url, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return r.json();
+  },
+  async put(url, data) {
+    const r = await fetch(url, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
     return r.json();
@@ -89,6 +102,13 @@ async function init() {
 // ─── Render ───
 function render() {
   const app = document.getElementById('app');
+  
+  // Show onboarding if not completed
+  if (!State.onboardingComplete) {
+    app.innerHTML = renderOnboarding();
+    return;
+  }
+  
   app.innerHTML = `
     ${renderTitleBar()}
     <div class="main-layout">
@@ -107,6 +127,193 @@ function render() {
     ${renderVideoCall()}
   `;
   attachEvents();
+}
+
+// ═══════════════════════════════════════════════════════
+// ONBOARDING WIZARD (5-Step)
+// ═══════════════════════════════════════════════════════
+function renderOnboarding() {
+  const steps = [
+    { title: 'Welcome to Round Table', subtitle: 'Your private collaboration space for family, faith, and teams.' },
+    { title: 'Who are you?', subtitle: 'Set up your profile so others can recognize you.' },
+    { title: 'Pick your color', subtitle: 'Choose a color that represents you at the table.' },
+    { title: 'Create your first table', subtitle: 'A table is a shared space for your group.' },
+    { title: 'Invite someone', subtitle: 'Round Table is better together. Invite a friend or family member.' },
+  ];
+  const step = steps[State.onboardingStep];
+  const progress = ((State.onboardingStep + 1) / steps.length) * 100;
+  const colors = ['#007AFF','#34C759','#FF9500','#AF52DE','#FF3B30','#FF2D55','#5AC8FA','#FFCC00'];
+  
+  return `
+    <div class="onboarding-container">
+      <div class="onboarding-card">
+        <div class="onboarding-progress">
+          <div class="onboarding-progress-fill" style="width:${progress}%"></div>
+        </div>
+        <div class="onboarding-steps-dots">
+          ${steps.map((_, i) => `<div class="onboarding-dot ${i === State.onboardingStep ? 'active' : ''} ${i < State.onboardingStep ? 'done' : ''}"></div>`).join('')}
+        </div>
+        
+        <div class="onboarding-body">
+          ${State.onboardingStep === 0 ? `
+            <div class="onboarding-hero">
+              <div class="onboarding-logo">
+                <i class="fas fa-circle-nodes"></i>
+              </div>
+              <h1>${step.title}</h1>
+              <p>${step.subtitle}</p>
+              <div class="onboarding-features">
+                <div class="onboarding-feature"><i class="fas fa-users"></i><span>Private group spaces</span></div>
+                <div class="onboarding-feature"><i class="fas fa-share-alt"></i><span>Share files, photos & more</span></div>
+                <div class="onboarding-feature"><i class="fas fa-walkie-talkie"></i><span>Instant walkie-talkie</span></div>
+                <div class="onboarding-feature"><i class="fas fa-calendar"></i><span>Shared calendar</span></div>
+                <div class="onboarding-feature"><i class="fas fa-envelope"></i><span>Built-in messaging</span></div>
+                <div class="onboarding-feature"><i class="fas fa-shield-halved"></i><span>Private & secure</span></div>
+              </div>
+            </div>
+          ` : State.onboardingStep === 1 ? `
+            <div class="onboarding-form">
+              <div class="onboarding-avatar-preview" style="background:${State.onboardingColor}">
+                ${State.onboardingName ? State.onboardingName.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase() : '<i class="fas fa-user"></i>'}
+              </div>
+              <h2>${step.title}</h2>
+              <p>${step.subtitle}</p>
+              <input type="text" class="onboarding-input" id="obName" placeholder="Your full name" value="${State.onboardingName}" oninput="State.onboardingName=this.value;render()">
+            </div>
+          ` : State.onboardingStep === 2 ? `
+            <div class="onboarding-form">
+              <div class="onboarding-avatar-preview" style="background:${State.onboardingColor}">
+                ${State.onboardingName ? State.onboardingName.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase() : 'YO'}
+              </div>
+              <h2>${step.title}</h2>
+              <p>${step.subtitle}</p>
+              <div class="onboarding-colors">
+                ${colors.map(c => `
+                  <button class="onboarding-color-btn ${State.onboardingColor === c ? 'selected' : ''}" style="background:${c}" onclick="State.onboardingColor='${c}';render()"></button>
+                `).join('')}
+              </div>
+            </div>
+          ` : State.onboardingStep === 3 ? `
+            <div class="onboarding-form">
+              <div class="onboarding-table-preview" style="border-color:${State.onboardingColor}">
+                <i class="fas fa-circle-nodes" style="color:${State.onboardingColor}"></i>
+              </div>
+              <h2>${step.title}</h2>
+              <p>${step.subtitle}</p>
+              <input type="text" class="onboarding-input" id="obTable" placeholder="e.g. Family Circle, Project Team, Study Group" value="${State.onboardingTableName}" oninput="State.onboardingTableName=this.value">
+              <div class="onboarding-suggestions">
+                ${['Family Circle','Faith Group','Work Team','Friend Group','Study Group'].map(s => `
+                  <button class="onboarding-suggestion" onclick="State.onboardingTableName='${s}';document.getElementById('obTable').value='${s}'">${s}</button>
+                `).join('')}
+              </div>
+            </div>
+          ` : `
+            <div class="onboarding-form">
+              <div class="onboarding-invite-icon">
+                <i class="fas fa-paper-plane"></i>
+              </div>
+              <h2>${step.title}</h2>
+              <p>${step.subtitle}</p>
+              <input type="email" class="onboarding-input" id="obInviteEmail" placeholder="friend@email.com" onkeypress="if(event.key==='Enter')addOnboardInvite()">
+              <button class="onboarding-add-btn" onclick="addOnboardInvite()"><i class="fas fa-plus"></i> Add</button>
+              ${State.onboardingInvited.length > 0 ? `
+                <div class="onboarding-invited-list">
+                  ${State.onboardingInvited.map((email, i) => `
+                    <div class="onboarding-invited-item">
+                      <i class="fas fa-check-circle" style="color:var(--mac-green)"></i>
+                      <span>${email}</span>
+                      <button onclick="State.onboardingInvited.splice(${i},1);render()" style="background:none;border:none;color:var(--mac-red);cursor:pointer;font-size:12px"><i class="fas fa-times"></i></button>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+              <p class="onboarding-skip-hint">You can also skip this and invite people later.</p>
+            </div>
+          `}
+        </div>
+        
+        <div class="onboarding-footer">
+          ${State.onboardingStep > 0 ? `
+            <button class="onboarding-btn secondary" onclick="onboardBack()">
+              <i class="fas fa-arrow-left"></i> Back
+            </button>
+          ` : '<div></div>'}
+          <button class="onboarding-btn primary" onclick="onboardNext()">
+            ${State.onboardingStep === steps.length - 1 ? '<i class="fas fa-rocket"></i> Get Started' : 'Continue <i class="fas fa-arrow-right"></i>'}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function onboardBack() {
+  if (State.onboardingStep > 0) { State.onboardingStep--; render(); }
+}
+
+function onboardNext() {
+  // Validate current step
+  if (State.onboardingStep === 1 && !State.onboardingName.trim()) {
+    document.getElementById('obName')?.focus();
+    document.getElementById('obName')?.classList.add('shake');
+    setTimeout(() => document.getElementById('obName')?.classList.remove('shake'), 500);
+    return;
+  }
+  
+  if (State.onboardingStep === 4) {
+    // Complete onboarding
+    completeOnboarding();
+    return;
+  }
+  
+  State.onboardingStep++;
+  render();
+  // Focus inputs
+  setTimeout(() => {
+    if (State.onboardingStep === 1) document.getElementById('obName')?.focus();
+    if (State.onboardingStep === 3) document.getElementById('obTable')?.focus();
+    if (State.onboardingStep === 4) document.getElementById('obInviteEmail')?.focus();
+  }, 100);
+}
+
+function addOnboardInvite() {
+  const input = document.getElementById('obInviteEmail');
+  const email = input?.value?.trim();
+  if (email && email.includes('@') && !State.onboardingInvited.includes(email)) {
+    State.onboardingInvited.push(email);
+    input.value = '';
+    render();
+    setTimeout(() => document.getElementById('obInviteEmail')?.focus(), 50);
+  }
+}
+
+async function completeOnboarding() {
+  // Save onboarding state
+  localStorage.setItem('rt-onboarded', 'true');
+  State.onboardingComplete = true;
+  
+  // Update user profile with chosen name/color
+  if (State.onboardingName) {
+    await API.put('/api/me', { name: State.onboardingName, color: State.onboardingColor }).catch(() => {});
+    if (State.currentUser) {
+      State.currentUser.name = State.onboardingName;
+      State.currentUser.color = State.onboardingColor;
+      State.currentUser.initials = State.onboardingName.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    }
+  }
+  
+  // Create first table if name provided
+  if (State.onboardingTableName.trim()) {
+    const t = await API.post('/api/tables', { name: State.onboardingTableName, color: State.onboardingColor, members: ['user-1'] }).catch(() => null);
+    if (t) { t.memberDetails = [State.currentUser]; State.tables.push(t); }
+  }
+  
+  // Invite contacts (simulate)
+  for (const email of State.onboardingInvited) {
+    await API.post('/api/contacts', { name: email.split('@')[0], email }).catch(() => {});
+  }
+  
+  render();
 }
 
 // ─── Title Bar ───
